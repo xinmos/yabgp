@@ -37,6 +37,7 @@ CONF = cfg.CONF
 CONF.register_cli_opts([
     cfg.StrOpt('peerip', help='The BGP peer address'),
     cfg.IntOpt('interval', default=0, help='time interval when sending message'),
+    cfg.StrOpt('next-hop', help='ipv4/ipv6 next hop, default: 192.168.1.1/fe80::0001'),
     cfg.IntOpt('count', default=10000, help='the number of messages you want to generate'),
     cfg.StrOpt('afi-safi',
                default='ipv4_unicast',
@@ -165,6 +166,22 @@ def get_random_ip_mask(v):
         return random.randint(64, 128)
 
 
+def checkout_ip(v, ip):
+    """
+    :param v: 4: ipv4, 6: ipv6
+    """
+    try:
+        if v == 4:
+            ipaddress.IPv4Address(ip)
+        elif v == 6:
+            ipaddress.IPv6Address(ip)
+        return True
+    except Exception:
+        if ip is not None:
+            print("WARN：ip address validate fail, Set the default value: 192.168.1.1/fe80::0001")
+        return False
+
+
 def get_random_list(length=10, random_type=1):
     """
     :param random_type: 1:list, 2:community, 3:ip addr
@@ -184,7 +201,8 @@ def get_random_list(length=10, random_type=1):
     return list(tmp_set)
 
 
-def init_ipv4_unicast_template():
+def init_ipv4_unicast_template(next_hop):
+    next_hop = next_hop if checkout_ip(4, next_hop) else "192.168.1.1"
     random_list = get_random_list(10, 1)
     community_list = get_random_list(10, 2)
     color_random = random.getrandbits(16)
@@ -194,7 +212,7 @@ def init_ipv4_unicast_template():
         "attr": {
             "1": 0,
             "2": [[2, random_list]],
-            "3": "192.0.2.1",
+            "3": next_hop,
             "5": 500,
             "8": community_list,
             "16": [f"color:{color_random}"]
@@ -205,7 +223,8 @@ def init_ipv4_unicast_template():
     return message_json
 
 
-def init_ipv4_mpls_vpn_template():
+def init_ipv4_mpls_vpn_template(next_hop):
+    next_hop = next_hop if checkout_ip(4, next_hop) else "192.168.1.1"
     label_list = get_random_list(5, 1)
     rd = f"{random.getrandbits(16)}:{random.getrandbits(16)}"
     color_random = random.getrandbits(16)
@@ -225,7 +244,7 @@ def init_ipv4_mpls_vpn_template():
             "5": 100,
             "14": {
                 "afi_safi": [1, 128],
-                "nexthop": {"rd": rd, "str": get_random_ip(4)},
+                "nexthop": {"rd": rd, "str": next_hop},
                 "nlri": nlri_list
             },
             "16": [f"route-target:{random.getrandbits(16)}:{random.getrandbits(16)}", f"color:{color_random}"]
@@ -235,7 +254,8 @@ def init_ipv4_mpls_vpn_template():
     return message_json
 
 
-def init_ipv4_label_unicast_template():
+def init_ipv4_label_unicast_template(next_hop):
+    next_hop = next_hop if checkout_ip(4, next_hop) else "192.168.1.1"
     color_random = random.getrandbits(16)
     label_list = get_random_list(5, 1)
     nlri_list_len = 10
@@ -252,7 +272,7 @@ def init_ipv4_label_unicast_template():
             "5": 400,
             "14": {
                 "afi_safi": [1, 4],
-                "nexthop": get_random_ip(4),
+                "nexthop": next_hop,
                 "nlri": nlri_list
             },
             "16": [f"color:{color_random}"]
@@ -262,7 +282,8 @@ def init_ipv4_label_unicast_template():
     return message_json
 
 
-def init_ipv6_unicast_template():
+def init_ipv6_unicast_template(next_hop):
+    next_hop = next_hop if checkout_ip(6, next_hop) else "fe80::0001"
     random_list = get_random_list(10, 1)
     community_list = get_random_list(10, 2)
     nlri_list_len = 3
@@ -277,7 +298,7 @@ def init_ipv6_unicast_template():
             "8": community_list,
             "14": {
                 "afi_safi": [2, 1],
-                "nexthop": get_random_ip(6),
+                "nexthop": next_hop,
                 "nlri": nlri_list
             }
         },
@@ -287,7 +308,8 @@ def init_ipv6_unicast_template():
     return message_json
 
 
-def init_ipv6_mpls_vpn_template():
+def init_ipv6_mpls_vpn_template(next_hop):
+    next_hop = next_hop if checkout_ip(6, next_hop) else "fe80::0001"
     rd = f"{random.getrandbits(16)}:{random.getrandbits(16)}"
     color_random = random.getrandbits(16)
     label_list = get_random_list(5, 1)
@@ -307,7 +329,7 @@ def init_ipv6_mpls_vpn_template():
             "5": 100,
             "14": {
                 "afi_safi": [2, 128],
-                "nexthop": {"rd": rd, "str": get_random_ip(6)},
+                "nexthop": {"rd": rd, "str": next_hop},
                 "nlri": nlri_list
             },
             "16": [f"route-target:{random.getrandbits(16)}:{random.getrandbits(16)}", f"color:{color_random}"]
@@ -317,7 +339,8 @@ def init_ipv6_mpls_vpn_template():
     return message_json
 
 
-def init_ipv6_label_unicast_template():
+def init_ipv6_label_unicast_template(next_hop):
+    next_hop = next_hop if checkout_ip(6, next_hop) else "fe80::0001"
     label_list = get_random_list(5, 1)
     nlri_list_len = 3
     nlri_list = []
@@ -333,7 +356,7 @@ def init_ipv6_label_unicast_template():
             "5": 400,
             "14": {
                 "afi_safi": [2, 4],
-                "nexthop": get_random_ip(6),
+                "nexthop": next_hop,
                 "nlri": nlri_list
             }
         }
@@ -342,7 +365,8 @@ def init_ipv6_label_unicast_template():
     return message_json
 
 
-def init_evpn_template():
+def init_evpn_template(next_hop):
+    next_hop = next_hop if checkout_ip(4, next_hop) else "192.168.1.1"
     rd = f"{get_random_ip(4)}:{random.getrandbits(16)}"
     mac_list = [0x58, 0x96, 0x1D, random.getrandbits(8), random.getrandbits(8), random.getrandbits(8)]
     mac = '-'.join(map(lambda x: "%02x" % x, mac_list))
@@ -353,7 +377,7 @@ def init_evpn_template():
             "5": 100,
             "14": {
                 "afi_safi": [25, 70],
-                "nexthop": get_random_ip(4),
+                "nexthop": next_hop,
                 "nlri": [
                     {
                         "type": 2,
@@ -391,6 +415,7 @@ def send_update():
     url = url.format(bind_host=CONF.rest.host, bind_port=CONF.rest.port, peer_ip=CONF.peerip)
     message_count = CONF.count
     message_type = CONF.afi_safi
+    next_hop = CONF.next_hop
     bar_length = 50
     message_pass_send = 0
     send_success = 0
@@ -399,7 +424,7 @@ def send_update():
     percent_step = 0.01
 
     for _ in range(message_count):
-        message = MSG_TYPE_DICT[message_type]()
+        message = MSG_TYPE_DICT[message_type](next_hop)
         res = get_data_from_agent(url, 'admin', 'admin', 'POST', message)
         if res:
             send_success += 1
