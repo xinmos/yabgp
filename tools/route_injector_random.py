@@ -22,6 +22,7 @@
 
 from __future__ import print_function
 
+from concurrent.futures import ThreadPoolExecutor, as_completed
 import ipaddress
 import random
 import sys
@@ -414,6 +415,7 @@ def send_update():
     url = 'http://{bind_host}:{bind_port}/v1/peer/{peer_ip}/send/update'
     url = url.format(bind_host=CONF.rest.host, bind_port=CONF.rest.port, peer_ip=CONF.peerip)
     message_count = CONF.count
+    pool = ThreadPoolExecutor(max_workers=40)
     message_type = CONF.afi_safi
     next_hop = CONF.next_hop
     bar_length = 50
@@ -422,11 +424,15 @@ def send_update():
     send_failed = 0
     current_percent = 0.00
     percent_step = 0.01
+    future_list = []
 
     for _ in range(message_count):
         message = MSG_TYPE_DICT[message_type](next_hop)
-        res = get_data_from_agent(url, 'admin', 'admin', 'POST', message)
-        if res:
+        task = pool.submit(get_data_from_agent, url, 'admin', 'admin', 'POST', message)
+        future_list.append(task)
+
+    for future in as_completed(future_list):
+        if future.result():
             send_success += 1
             interval()
         else:
@@ -450,7 +456,9 @@ def send_update():
 
 if __name__ == '__main__':
     CONF(args=sys.argv[1:])
+    start = time.time()
     try:
         send_update()
     except KeyboardInterrupt:
         sys.exit()
+    print("spend time: ", time.time() - start)
