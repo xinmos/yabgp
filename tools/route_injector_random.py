@@ -415,6 +415,8 @@ def send_update():
     url = 'http://{bind_host}:{bind_port}/v1/peer/{peer_ip}/send/update'
     url = url.format(bind_host=CONF.rest.host, bind_port=CONF.rest.port, peer_ip=CONF.peerip)
     message_count = CONF.count
+    if message_count > 150000:
+        print("Warring: There are too many messages and the server may break down")
     pool = ThreadPoolExecutor(max_workers=40)
     message_type = CONF.afi_safi
     next_hop = CONF.next_hop
@@ -461,4 +463,4 @@ if __name__ == '__main__':
         send_update()
     except KeyboardInterrupt:
         sys.exit()
-    print("spend time: ", time.time() - start)
+    print("spend time: %.3fs" % (time.time() - start))
