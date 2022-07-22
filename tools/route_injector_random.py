@@ -32,6 +32,8 @@ import time
 
 from oslo_config import cfg
 
+ipv4_start_int = 2 ** 24 + 1   # 1.0.0.1
+ipv6_start_int = 338288524927261089654018896841347694593   # fe80::0001
 
 CONF = cfg.CONF
 
@@ -146,11 +148,23 @@ def get_random_ip(v):
     """
     :param v: 4: ipv4, 6: ipv6
     """
+    global ipv4_start_int
+    global ipv6_start_int
     if v == 4:
-        ipv4 = ipaddress.IPv4Address(random.getrandbits(32))
+        max_ip_int = 2 ** 32
+        if ipv4_start_int > max_ip_int:
+            raise ValueError("ip value overflow")
+        # ipv4 = ipaddress.IPv4Address(random.getrandbits(32))
+        ipv4 = ipaddress.IPv4Address(ipv4_start_int)
+        ipv4_start_int += 1
         return str(ipv4)
     elif v == 6:
-        ipv6 = ipaddress.IPv6Address(random.getrandbits(128))
+        max_ip_int = 2 ** 128
+        if ipv6_start_int > max_ip_int:
+            raise ValueError("ip value overflow")
+        # ipv6 = ipaddress.IPv6Address(random.getrandbits(128))
+        ipv6 = ipaddress.IPv6Address(ipv6_start_int)
+        ipv6_start_int += 1
         # .compressed contains the short version of the IPv6 address
         # str(ipv6) always returns the short address
         # .exploded is the opposite of this, always returning the full address with all-zero groups and so on
@@ -162,9 +176,11 @@ def get_random_ip_mask(v):
     :param v: 4: ipv4, 6: ipv6
     """
     if v == 4:
-        return random.randint(16, 32)
+        # return random.randint(16, 32)
+        return 32
     elif v == 6:
-        return random.randint(64, 128)
+        # return random.randint(64, 128)
+        return 128
 
 
 def checkout_ip(v, ip):
@@ -454,6 +470,8 @@ def send_update():
     print('\nTotal messages:   %s' % int(message_count))
     print('Success send out: %s' % send_success)
     print('Failed send out:  %s' % send_failed)
+    print('the last ipv4:  %s' % ipaddress.IPv4Address(ipv4_start_int))
+    print('the last ipv6:  %s' % ipaddress.IPv6Address(ipv6_start_int))
 
 
 if __name__ == '__main__':
